@@ -1,0 +1,14 @@
+Hi {{.Name}},
+
+Thank you for signing up with {{.AppName}}. To complete your registration and access your account, please verify your email address by clicking the link below:
+
+{{.VerificationLink}}
+
+If the button doesn’t work, copy and paste this link into your browser:
+{{.VerificationLink}}
+
+Didn’t create an account?
+If you didn’t sign up for {{.AppName}}, please ignore this email or contact our support team at {{.SupportEmail}}.
+
+Thanks,
+The {{.AppName}} Team
