@@ -32,11 +32,11 @@ func (w *APIWrapper) SignUp(ctx context.Context, input *dto.AccountSignUpRequest
 		if tokenErr != nil {
 			w.logger.Error("error generating verification token", "error", tokenErr)
 
-			response := &dto.AccountSignUpResponse{}
-			response.Message = "Account created, but verification email not sent. Please request a resend."
-			response.StatusMessage = dto.Fail
+			responseBody := dto.AccountSignUpResponseBody{}
+			responseBody.Message = "Account created, but verification email not sent. Please request a resend."
+			responseBody.StatusMessage = dto.Fail
 
-			return response, nil
+			return &dto.AccountSignUpResponse{Body: responseBody}, nil
 		}
 
 		verificationLink := BuildAuthVerifyURL(w.config.Routing, verificationToken)
@@ -63,13 +63,13 @@ func (w *APIWrapper) SignUp(ctx context.Context, input *dto.AccountSignUpRequest
 		}
 	}
 
-	response := &dto.AccountSignUpResponse{}
+	responseBody := dto.AccountSignUpResponseBody{}
 	if user.IsVerified {
-		response.Message = "Account created"
+		responseBody.Message = "Account created"
 	} else {
-		response.Message = "Account created. Please check your email to verify your account."
+		responseBody.Message = "Account created. Please check your email to verify your account."
 	}
-	response.StatusMessage = dto.Success
+	responseBody.StatusMessage = dto.Success
 
-	return response, nil
+	return &dto.AccountSignUpResponse{Body: responseBody}, nil
 }
