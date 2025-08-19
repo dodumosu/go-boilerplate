@@ -358,3 +358,46 @@ func (e *EmailService) SendWelcomeEmail(email string, name string, verificationL
 
 	return nil
 }
+
+func (e *EmailService) SendPasswordResetEmail(email string, name string, resetLink string) error {
+	resetTextTemplate, err := LoadTextTemplate("reset.txt")
+	if err != nil {
+		e.Logger.Error("Unable to load password reset email template", "error", err)
+		return err
+	}
+
+	resetHTMLTemplate, err := LoadHTMLTemplate("reset.html")
+	if err != nil {
+		e.Logger.Error("Unable to load password reset email template", "error", err)
+		return err
+	}
+
+	type TemplateData struct {
+		Name         string
+		ResetLink    string
+		SupportEmail string
+		AppName      string
+		Timeout      string
+	}
+	data := TemplateData{
+		AppName:      e.appConfig.AppName,
+		Name:         name,
+		ResetLink:    resetLink,
+		SupportEmail: e.smtpConfig.DefaultSender,
+		Timeout:      e.authConfig.TokenLifetime.String(),
+	}
+
+	emailErr := e.SendToSingle(email,
+		WithSender(e.smtpConfig.DefaultSender),
+		WithSubject("Reset Your Password"),
+		WithHTMLTemplate(resetHTMLTemplate, data),
+		WithTextTemplate(resetTextTemplate, data),
+	)
+
+	if emailErr != nil {
+		e.Logger.Error("Failed to send password reset email", "email", email, "error", emailErr)
+		return emailErr
+	}
+
+	return nil
+}

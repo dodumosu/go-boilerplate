@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humago"
 	"github.com/justinas/alice"
 	"github.com/rs/cors"
 )
@@ -80,6 +82,33 @@ func (wrapper *APIWrapper) logRequest(next http.Handler) http.Handler {
 		)
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (w *APIWrapper) makeAuthRequiredMiddleware(api huma.API) func(huma.Context, func(huma.Context)) {
+	requireAuth := func(ctx huma.Context, next func(huma.Context)) {
+		request, _ := humago.Unwrap(ctx)
+		authHeader := strings.TrimSpace(request.Header.Get("Authorization"))
+		if authHeader == "" {
+			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Authorization header is required")
+			return
+		}
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Invalid authentcation header format")
+			return
+		}
+		tokenStr := parts[1]
+		claims, err := w.authenticator.ValidateAndParseAccessToken(tokenStr)
+		if err != nil {
+			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Invalid or expired token")
+			return
+		}
+		ctx = huma.WithValue(ctx, UserIDKey, claims.Subject)
+
+		next(ctx)
+	}
+
+	return requireAuth
 }
 
 func (w *APIWrapper) SetupMiddleware(mux *http.ServeMux) http.Handler {

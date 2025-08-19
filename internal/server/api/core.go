@@ -47,8 +47,10 @@ func NewAPIWrapper(cfg config.Settings, dbService *db.DBService, cacheService *c
 	}
 }
 
-func (w *APIWrapper) registerAuthRoutes(api huma.API) {
+func (w *APIWrapper) registerAPIRoutes(api huma.API) {
 	authGroup := huma.NewGroup(api, AccountBase)
+	requireAuthMiddleware := w.makeAuthRequiredMiddleware(api)
+
 	huma.Register(authGroup, huma.Operation{
 		Description: "Sign up for an account",
 		Method:      http.MethodPost,
@@ -57,10 +59,39 @@ func (w *APIWrapper) registerAuthRoutes(api huma.API) {
 		Summary:     "Sign up",
 		Tags:        []string{"Accounts"},
 	}, w.SignUp)
-}
-
-func (w *APIWrapper) registerAPIRoutes(api huma.API) {
-	w.registerAuthRoutes(api)
+	huma.Register(authGroup, huma.Operation{
+		Description: "Check account availability",
+		Method:      http.MethodPost,
+		OperationID: "check-availability",
+		Path:        strings.TrimPrefix(AccountAvailability, AccountBase),
+		Summary:     "Check account availability",
+		Tags:        []string{"Accounts"},
+	}, w.CheckAccountAvailability)
+	huma.Register(authGroup, huma.Operation{
+		Description: "Verify account",
+		Method:      http.MethodGet,
+		OperationID: "verify-account",
+		Path:        strings.TrimPrefix(AccountVerify, AccountBase),
+		Summary:     "Verify account",
+		Tags:        []string{"Accounts"},
+	}, w.VerifyAccount)
+	huma.Register(authGroup, huma.Operation{
+		Description: "Sign out",
+		Method:      http.MethodDelete,
+		Middlewares: huma.Middlewares{requireAuthMiddleware},
+		OperationID: "sign-out",
+		Path:        strings.TrimPrefix(AccountSignOut, AccountBase),
+		Summary:     "Sign out",
+		Tags:        []string{"Accounts"},
+	}, w.SignOut)
+	huma.Register(authGroup, huma.Operation{
+		Description: "Sign in",
+		Method:      http.MethodPost,
+		OperationID: "sign-in",
+		Path:        strings.TrimPrefix(AccountSignIn, AccountBase),
+		Summary:     "Sign in",
+		Tags:        []string{"Accounts"},
+	}, w.SignIn)
 }
 
 func SetupAPI(mux *http.ServeMux, cfg config.Settings, dbService *db.DBService, cacheService *cache.CacheService, jobService *job.JobService, redisService *redisutil.RedisService, rootLogger *slog.Logger) *APIWrapper {

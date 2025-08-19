@@ -22,6 +22,7 @@ const (
 	AccountForgotPassword     = AccountBase + "/forgot-password"
 	AccountResetPassword      = AccountBase + "/reset-password"
 	AccountChangePassword     = AccountBase + "/change-password"
+	AccountAvailability       = AccountBase + "/check-availability"
 )
 
 const (

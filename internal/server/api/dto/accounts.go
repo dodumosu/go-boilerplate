@@ -26,7 +26,7 @@ type ResendVerificationResponseBody struct {
 }
 
 type ResendVerificationResponse struct {
-	Body ResendVerificationRequestBody
+	Body ResendVerificationResponseBody
 }
 
 type AccountVerificationRequest struct {
@@ -58,4 +58,23 @@ type ForgotPasswordRequestBody struct {
 
 type ResetPasswordRequestBody struct {
 	Email string `json:"email" format:"email"`
+}
+
+type CheckAccountAvailabilityRequestBody struct {
+	Email    string `json:"email" format:"email"`
+	Username string `json:"username"`
+}
+
+type CheckAccountAvailabilityRequest struct {
+	BaseRequest
+	Body CheckAccountAvailabilityRequestBody
+}
+
+type CheckAccountAvailabilityResponseBody struct {
+	AccountAvailable bool `json:"isAccountAvailable"`
+	BaseResponse
+}
+
+type CheckAccountAvailabilityResponse struct {
+	Body CheckAccountAvailabilityResponseBody
 }

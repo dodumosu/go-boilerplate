@@ -11,6 +11,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkUserExistsByUsernameOrEmail = `-- name: CheckUserExistsByUsernameOrEmail :one
+SELECT EXISTS(
+        SELECT 1
+        FROM users
+        WHERE users.username = $1
+    ) AS username_exists,
+    EXISTS(
+        SELECT 1
+        FROM users
+        WHERE users.email = $2
+    ) AS email_exists
+`
+
+type CheckUserExistsByUsernameOrEmailParams struct {
+	UsernameVal pgtype.Text
+	EmailVal    string
+}
+
+type CheckUserExistsByUsernameOrEmailRow struct {
+	UsernameExists bool
+	EmailExists    bool
+}
+
+// Checks if a user exists with the given username or email.
+// Returns a simple struct indicating existence for each.
+func (q *Queries) CheckUserExistsByUsernameOrEmail(ctx context.Context, arg CheckUserExistsByUsernameOrEmailParams) (CheckUserExistsByUsernameOrEmailRow, error) {
+	row := q.db.QueryRow(ctx, checkUserExistsByUsernameOrEmail, arg.UsernameVal, arg.EmailVal)
+	var i CheckUserExistsByUsernameOrEmailRow
+	err := row.Scan(&i.UsernameExists, &i.EmailExists)
+	return i, err
+}
+
 const createOAuthAccount = `-- name: CreateOAuthAccount :one
 INSERT INTO oauth_accounts (
     id,
@@ -147,23 +179,32 @@ INSERT INTO users (
     email,
     username,
     password_hash,
-    is_verified
+    is_active,
+    is_verified,
+    password_change_on_login,
+    is_superuser
 ) VALUES (
     $1,
     $2,
     $3,
     $4,
-    NOT $5::boolean
+    $5,
+    NOT $6::boolean,
+    $7,
+    $8
 )
 RETURNING id, email, username, password_hash, is_superuser, has_roles, is_active, is_verified, password_reset_requested, password_change_on_login, suspended_until, banned_at, deactivate_at, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	ID                   string
-	Email                string
-	Username             pgtype.Text
-	PasswordHash         pgtype.Text
-	RequiresVerification bool
+	ID                    string
+	Email                 string
+	Username              pgtype.Text
+	PasswordHash          pgtype.Text
+	IsActive              bool
+	RequiresVerification  bool
+	PasswordChangeOnLogin bool
+	IsSuperuser           bool
 }
 
 // Create a new user
@@ -173,7 +214,10 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Email,
 		arg.Username,
 		arg.PasswordHash,
+		arg.IsActive,
 		arg.RequiresVerification,
+		arg.PasswordChangeOnLogin,
+		arg.IsSuperuser,
 	)
 	var i User
 	err := row.Scan(
@@ -194,4 +238,168 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, username, password_hash, is_superuser, has_roles, is_active, is_verified, password_reset_requested, password_change_on_login, suspended_until, banned_at, deactivate_at, created_at, updated_at FROM users WHERE email = $1 LIMIT 1
+`
+
+// Retrieves a user by their email.
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.IsSuperuser,
+		&i.HasRoles,
+		&i.IsActive,
+		&i.IsVerified,
+		&i.PasswordResetRequested,
+		&i.PasswordChangeOnLogin,
+		&i.SuspendedUntil,
+		&i.BannedAt,
+		&i.DeactivateAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, email, username, password_hash, is_superuser, has_roles, is_active, is_verified, password_reset_requested, password_change_on_login, suspended_until, banned_at, deactivate_at, created_at, updated_at FROM users WHERE id = $1 LIMIT 1
+`
+
+// Retrieves a user by the ID
+func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.IsSuperuser,
+		&i.HasRoles,
+		&i.IsActive,
+		&i.IsVerified,
+		&i.PasswordResetRequested,
+		&i.PasswordChangeOnLogin,
+		&i.SuspendedUntil,
+		&i.BannedAt,
+		&i.DeactivateAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const resetPassword = `-- name: ResetPassword :exec
+UPDATE users
+SET
+    password_hash = $1,
+    password_reset_requested = false
+WHERE
+    id = $2
+`
+
+type ResetPasswordParams struct {
+	PasswordHash pgtype.Text
+	ID           string
+}
+
+// Reset's an account's password
+func (q *Queries) ResetPassword(ctx context.Context, arg ResetPasswordParams) error {
+	_, err := q.db.Exec(ctx, resetPassword, arg.PasswordHash, arg.ID)
+	return err
+}
+
+const setPasswordResetFlag = `-- name: SetPasswordResetFlag :exec
+UPDATE users
+SET password_reset_requested = true
+WHERE email = $1
+`
+
+// Sets the password reset flag on an account
+func (q *Queries) SetPasswordResetFlag(ctx context.Context, email string) error {
+	_, err := q.db.Exec(ctx, setPasswordResetFlag, email)
+	return err
+}
+
+const updatePassword = `-- name: UpdatePassword :exec
+UPDATE users
+SET password_hash = $1
+WHERE id = $2
+`
+
+type UpdatePasswordParams struct {
+	PasswordHash pgtype.Text
+	ID           string
+}
+
+// Updates a user's password hash
+func (q *Queries) UpdatePassword(ctx context.Context, arg UpdatePasswordParams) error {
+	_, err := q.db.Exec(ctx, updatePassword, arg.PasswordHash, arg.ID)
+	return err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+UPDATE profiles
+SET 
+    first_name = COALESCE($1, first_name),
+    last_name = COALESCE($2, last_name),
+    other_names = COALESCE($3, other_names),
+    phone = COALESCE($4, phone),
+    bio = COALESCE($5, bio)
+WHERE user_id = $6
+RETURNING id, user_id, first_name, last_name, other_names, bio, phone, created_at, updated_at
+`
+
+type UpdateUserProfileParams struct {
+	FirstName  pgtype.Text
+	LastName   pgtype.Text
+	OtherNames pgtype.Text
+	Phone      pgtype.Text
+	Bio        pgtype.Text
+	UserID     string
+}
+
+// Updates a user's profile information.
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (Profile, error) {
+	row := q.db.QueryRow(ctx, updateUserProfile,
+		arg.FirstName,
+		arg.LastName,
+		arg.OtherNames,
+		arg.Phone,
+		arg.Bio,
+		arg.UserID,
+	)
+	var i Profile
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FirstName,
+		&i.LastName,
+		&i.OtherNames,
+		&i.Bio,
+		&i.Phone,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const verifyUserAccount = `-- name: VerifyUserAccount :exec
+UPDATE users
+SET 
+    is_verified = TRUE
+WHERE id = $1
+`
+
+// Marks a user's account as verified.
+func (q *Queries) VerifyUserAccount(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, verifyUserAccount, id)
+	return err
 }

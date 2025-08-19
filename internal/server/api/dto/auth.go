@@ -19,11 +19,13 @@ type AccountSignUpRequestBody struct {
 }
 
 type AccountLite struct {
-	ID        string `json:"id"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
+	ID                      string `json:"id"`
+	FirstName               string `json:"firstName"`
+	LastName                string `json:"lastName"`
+	Username                string `json:"username"`
+	Email                   string `json:"email"`
+	PasswordChangeRequested bool   `json:"changePasswordOnLogin"`
+	IsSuperuser             bool   `json:"isSuperuser"`
 }
 
 type SignInResponseBody struct {

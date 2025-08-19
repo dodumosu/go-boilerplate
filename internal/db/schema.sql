@@ -1,4 +1,4 @@
-\restrict 2Il8x5HIZ0othLZU98Y5S30wsMTy78y7SgiBK6buHx5cL8WnxCzmh6lOBwQwgfy
+\restrict NBf5Up9jfSUinL8dNecS40rt5kcmaJez72vwMiS7yVj3jkPzdxbod656YranTnb
 
 -- Dumped from database version 15.14 (Ubuntu 15.14-1.pgdg24.04+1)
 -- Dumped by pg_dump version 15.14 (Ubuntu 15.14-1.pgdg24.04+1)
@@ -118,6 +118,46 @@ CREATE TABLE public.audit_logs (
     error_message text,
     metadata jsonb,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: bans; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bans (
+    id character varying(32) NOT NULL,
+    banned_user_id character varying(32) NOT NULL,
+    banning_user_id character varying(32) NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.events (
+    id character varying(32) NOT NULL,
+    name character varying(255) NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: metrics; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.metrics (
+    id character varying(32) NOT NULL,
+    event_id character varying(32) NOT NULL,
+    dimensions jsonb NOT NULL,
+    date date NOT NULL,
+    count bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone
 );
 
 
@@ -264,6 +304,18 @@ CREATE TABLE public.scopes (
 
 
 --
+-- Name: suspensions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.suspensions (
+    id character varying(32) NOT NULL,
+    suspended_user_id character varying(32) NOT NULL,
+    suspending_user_id character varying(32) NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -321,6 +373,38 @@ ALTER TABLE ONLY public.actions
 
 ALTER TABLE ONLY public.audit_logs
     ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bans bans_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bans
+    ADD CONSTRAINT bans_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: events events_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.events
+    ADD CONSTRAINT events_name_key UNIQUE (name);
+
+
+--
+-- Name: events events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.events
+    ADD CONSTRAINT events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: metrics metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.metrics
+    ADD CONSTRAINT metrics_pkey PRIMARY KEY (id);
 
 
 --
@@ -444,6 +528,14 @@ ALTER TABLE ONLY public.scopes
 
 
 --
+-- Name: suspensions suspensions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suspensions
+    ADD CONSTRAINT suspensions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -511,6 +603,62 @@ CREATE INDEX idx_audit_logs_user_created ON public.audit_logs USING btree (user_
 
 
 --
+-- Name: idx_bans_banned_banner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_bans_banned_banner ON public.bans USING btree (banned_user_id, banning_user_id);
+
+
+--
+-- Name: idx_bans_banned_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_bans_banned_user_id ON public.bans USING btree (banned_user_id);
+
+
+--
+-- Name: idx_bans_banning_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_bans_banning_user_id ON public.bans USING btree (banning_user_id);
+
+
+--
+-- Name: idx_bans_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_bans_created_at ON public.bans USING btree (created_at);
+
+
+--
+-- Name: idx_events_name_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_events_name_trgm ON public.events USING gin (name public.gin_trgm_ops);
+
+
+--
+-- Name: idx_metrics_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_metrics_date ON public.metrics USING btree (date);
+
+
+--
+-- Name: idx_metrics_dimensions_gin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_metrics_dimensions_gin ON public.metrics USING gin (dimensions);
+
+
+--
+-- Name: idx_metrics_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_metrics_event_id ON public.metrics USING btree (event_id);
+
+
+--
 -- Name: idx_oauth_accounts_provider_id_provider_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -564,6 +712,34 @@ CREATE UNIQUE INDEX idx_roles_permissions_role_id_permission_id ON public.roles_
 --
 
 CREATE UNIQUE INDEX idx_roles_users_role_id_user_id ON public.roles_users USING btree (role_id, user_id);
+
+
+--
+-- Name: idx_suspensions_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suspensions_created_at ON public.suspensions USING btree (created_at);
+
+
+--
+-- Name: idx_suspensions_suspended_suspender; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_suspensions_suspended_suspender ON public.suspensions USING btree (suspended_user_id, suspending_user_id);
+
+
+--
+-- Name: idx_suspensions_suspended_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suspensions_suspended_user_id ON public.suspensions USING btree (suspended_user_id);
+
+
+--
+-- Name: idx_suspensions_suspending_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_suspensions_suspending_user_id ON public.suspensions USING btree (suspending_user_id);
 
 
 --
@@ -651,6 +827,20 @@ CREATE TRIGGER set_scopes_updated_at BEFORE UPDATE ON public.scopes FOR EACH ROW
 
 
 --
+-- Name: events set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
+-- Name: metrics set_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_timestamp BEFORE UPDATE ON public.metrics FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+
+--
 -- Name: users set_users_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -663,6 +853,30 @@ CREATE TRIGGER set_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW E
 
 ALTER TABLE ONLY public.audit_logs
     ADD CONSTRAINT fk_audit_logs_user_id_users_id FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: bans fk_bans_banned_user_id_users_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bans
+    ADD CONSTRAINT fk_bans_banned_user_id_users_id FOREIGN KEY (banned_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: bans fk_bans_banning_user_id_users_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bans
+    ADD CONSTRAINT fk_bans_banning_user_id_users_id FOREIGN KEY (banning_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: metrics fk_metrics_event_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.metrics
+    ADD CONSTRAINT fk_metrics_event_id FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
 
 
 --
@@ -754,6 +968,22 @@ ALTER TABLE ONLY public.roles_users
 
 
 --
+-- Name: suspensions fk_suspensions_suspended_user_id_users_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suspensions
+    ADD CONSTRAINT fk_suspensions_suspended_user_id_users_id FOREIGN KEY (suspended_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: suspensions fk_suspensions_suspending_user_id_users_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suspensions
+    ADD CONSTRAINT fk_suspensions_suspending_user_id_users_id FOREIGN KEY (suspending_user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: users_permissions fk_users_permissions_assigned_by_users_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -781,7 +1011,7 @@ ALTER TABLE ONLY public.users_permissions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2Il8x5HIZ0othLZU98Y5S30wsMTy78y7SgiBK6buHx5cL8WnxCzmh6lOBwQwgfy
+\unrestrict NBf5Up9jfSUinL8dNecS40rt5kcmaJez72vwMiS7yVj3jkPzdxbod656YranTnb
 
 
 --
@@ -790,4 +1020,5 @@ ALTER TABLE ONLY public.users_permissions
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20250807163655'),
-    ('20250807180211');
+    ('20250807180211'),
+    ('20250818203312');

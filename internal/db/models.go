@@ -81,6 +81,31 @@ type AuditLog struct {
 	CreatedAt     pgtype.Timestamptz
 }
 
+type Ban struct {
+	ID            string
+	BannedUserID  string
+	BanningUserID string
+	CreatedAt     pgtype.Timestamptz
+}
+
+type Event struct {
+	ID          string
+	Name        string
+	Description pgtype.Text
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type Metric struct {
+	ID         string
+	EventID    string
+	Dimensions []byte
+	Date       pgtype.Date
+	Count      int64
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
 type OauthAccount struct {
 	ID               string
 	UserID           string
@@ -167,6 +192,13 @@ type Scope struct {
 	Description pgtype.Text
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+}
+
+type Suspension struct {
+	ID               string
+	SuspendedUserID  string
+	SuspendingUserID string
+	CreatedAt        pgtype.Timestamptz
 }
 
 type User struct {
