@@ -208,6 +208,19 @@ func (r *AccountRepository) GetUserByID(ctx context.Context, userID string) (*db
 	return &user, nil
 }
 
+func (r *AccountRepository) GetAccountByUserID(ctx context.Context, userID string) (*db.GetAccountByUserIDRow, error) {
+	accountInfo, err := r.dbService.GetAccountByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAccountDoesNotExist
+		}
+
+		return nil, err
+	}
+
+	return &accountInfo, nil
+}
+
 func (r *AccountRepository) RequestPasswordReset(ctx context.Context, email string) (*db.LookupAccountForAuthRow, error) {
 	// need data from both the profile and user tables
 	// to send the recovery email

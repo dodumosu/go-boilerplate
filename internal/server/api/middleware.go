@@ -4,6 +4,7 @@ import (
 	"go-boilerplate/internal/lib"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
@@ -103,6 +104,25 @@ func (w *APIWrapper) makeAuthRequiredMiddleware(api huma.API) func(huma.Context,
 			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Invalid or expired token")
 			return
 		}
+
+		if claims.ID == "" {
+			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Invalid or expired token")
+			return
+		}
+		isBlocklisted, err := w.redisService.IsBlocklisted(ctx.Context(), claims.ID)
+		if err != nil {
+			huma.WriteErr(api, ctx, http.StatusInternalServerError, "Error validating token")
+			return
+		}
+		if isBlocklisted {
+			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Invalid or expired token")
+			return
+		}
+		if claims.ExpiresAt.Time.Before(time.Now()) {
+			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Expired token")
+			return
+		}
+
 		ctx = huma.WithValue(ctx, UserIDKey, claims.Subject)
 
 		next(ctx)

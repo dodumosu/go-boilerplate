@@ -85,6 +85,24 @@ func (w *APIWrapper) registerAPIRoutes(api huma.API) {
 		Tags:        []string{"Accounts"},
 	}, w.SignOut)
 	huma.Register(authGroup, huma.Operation{
+		Description: "Update account",
+		Method:      http.MethodPut,
+		Middlewares: huma.Middlewares{requireAuthMiddleware},
+		OperationID: "update-account",
+		Path:        strings.TrimPrefix(AccountUpdate, AccountBase),
+		Summary:     "Update account",
+		Tags:        []string{"Accounts"},
+	}, w.UpdateAccount)
+	huma.Register(authGroup, huma.Operation{
+		Description: "Get account detail",
+		Method:      http.MethodGet,
+		Middlewares: huma.Middlewares{requireAuthMiddleware},
+		OperationID: "get-account-detail",
+		Path:        strings.TrimPrefix(AccountDetail, AccountBase),
+		Summary:     "Get account detail",
+		Tags:        []string{"Accounts"},
+	}, w.GetOwnAccount)
+	huma.Register(authGroup, huma.Operation{
 		Description: "Sign in",
 		Method:      http.MethodPost,
 		OperationID: "sign-in",

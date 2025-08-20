@@ -240,6 +240,99 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getAccountByUserID = `-- name: GetAccountByUserID :one
+SELECT
+    u.id,
+    u.email,
+    u.username,
+    u.password_hash,
+    u.is_superuser,
+    u.has_roles,
+    u.is_active,
+    u.is_verified,
+    u.password_reset_requested,
+    u.password_change_on_login,
+    u.suspended_until,
+    u.banned_at,
+    u.deactivate_at,
+    u.created_at,
+    u.updated_at,
+    p.id as profile_id,
+    p.user_id,
+    p.first_name,
+    p.last_name,
+    p.other_names,
+    p.bio,
+    p.phone,
+    p.created_at as profile_created_at,
+    p.updated_at as profile_updated_at
+FROM users AS u
+INNER JOIN profiles AS p
+ON u.id = p.user_id
+WHERE
+    u.id = $1
+`
+
+type GetAccountByUserIDRow struct {
+	ID                     string
+	Email                  string
+	Username               pgtype.Text
+	PasswordHash           pgtype.Text
+	IsSuperuser            bool
+	HasRoles               bool
+	IsActive               bool
+	IsVerified             bool
+	PasswordResetRequested bool
+	PasswordChangeOnLogin  bool
+	SuspendedUntil         pgtype.Timestamptz
+	BannedAt               pgtype.Timestamptz
+	DeactivateAt           pgtype.Timestamptz
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	ProfileID              string
+	UserID                 string
+	FirstName              string
+	LastName               string
+	OtherNames             pgtype.Text
+	Bio                    pgtype.Text
+	Phone                  pgtype.Text
+	ProfileCreatedAt       pgtype.Timestamptz
+	ProfileUpdatedAt       pgtype.Timestamptz
+}
+
+// Retrieves the full account by ID
+func (q *Queries) GetAccountByUserID(ctx context.Context, userID string) (GetAccountByUserIDRow, error) {
+	row := q.db.QueryRow(ctx, getAccountByUserID, userID)
+	var i GetAccountByUserIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.IsSuperuser,
+		&i.HasRoles,
+		&i.IsActive,
+		&i.IsVerified,
+		&i.PasswordResetRequested,
+		&i.PasswordChangeOnLogin,
+		&i.SuspendedUntil,
+		&i.BannedAt,
+		&i.DeactivateAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProfileID,
+		&i.UserID,
+		&i.FirstName,
+		&i.LastName,
+		&i.OtherNames,
+		&i.Bio,
+		&i.Phone,
+		&i.ProfileCreatedAt,
+		&i.ProfileUpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, email, username, password_hash, is_superuser, has_roles, is_active, is_verified, password_reset_requested, password_change_on_login, suspended_until, banned_at, deactivate_at, created_at, updated_at FROM users WHERE email = $1 LIMIT 1
 `

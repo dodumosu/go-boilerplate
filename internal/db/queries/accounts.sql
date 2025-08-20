@@ -133,3 +133,36 @@ SET
     password_reset_requested = false
 WHERE
     id = sqlc.arg(id);
+
+-- name: GetAccountByUserID :one
+-- Retrieves the full account by ID
+SELECT
+    u.id,
+    u.email,
+    u.username,
+    u.password_hash,
+    u.is_superuser,
+    u.has_roles,
+    u.is_active,
+    u.is_verified,
+    u.password_reset_requested,
+    u.password_change_on_login,
+    u.suspended_until,
+    u.banned_at,
+    u.deactivate_at,
+    u.created_at,
+    u.updated_at,
+    p.id as profile_id,
+    p.user_id,
+    p.first_name,
+    p.last_name,
+    p.other_names,
+    p.bio,
+    p.phone,
+    p.created_at as profile_created_at,
+    p.updated_at as profile_updated_at
+FROM users AS u
+INNER JOIN profiles AS p
+ON u.id = p.user_id
+WHERE
+    u.id = sqlc.arg(user_id);

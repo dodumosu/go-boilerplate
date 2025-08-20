@@ -207,3 +207,99 @@ func (w *APIWrapper) UpdatePassword(ctx context.Context, input *dto.PasswordChan
 		},
 	}, nil
 }
+
+func (w *APIWrapper) UpdateAccount(ctx context.Context, input *dto.AccountUpdateRequest) (*dto.AccountUpdateResponse, error) {
+	userID, ok := GetUserID(ctx)
+	if !ok {
+		return nil, huma.Error401Unauthorized("Please sign in to complete this operation")
+	}
+
+	accountInfo, err := w.accountRepo.UpdateProfile(
+		ctx, userID, input.Body.FirstName, input.Body.LastName, input.Body.OtherNames,
+		input.Body.Bio, input.Body.Phone,
+	)
+
+	if err != nil {
+		if errors.Is(err, repositories.ErrAccountDoesNotExist) {
+			return nil, huma.Error400BadRequest("Cannot perform this operation")
+		}
+
+		correlationID := GetCorrelationID(ctx)
+		w.logger.Error("Error updating profile", "account_id", userID, "correlation_id", correlationID)
+		return nil, huma.Error500InternalServerError("Could not update account")
+	}
+
+	responseBody := dto.AccountUpdateResponseBody{
+		Account: dto.Account{
+			FirstName: accountInfo.FirstName,
+			LastName:  accountInfo.LastName,
+			CreatedAt: accountInfo.CreatedAt.Time,
+		},
+		BaseResponse: dto.BaseResponse{
+			Message:       "ok",
+			StatusMessage: dto.Success,
+		},
+	}
+
+	if accountInfo.Bio.Valid {
+		responseBody.Account.Bio = accountInfo.Bio.String
+	}
+
+	if accountInfo.OtherNames.Valid {
+		responseBody.Account.OtherNames = accountInfo.OtherNames.String
+	}
+
+	if accountInfo.Phone.Valid {
+		responseBody.Account.Phone = accountInfo.Phone.String
+	}
+
+	return &dto.AccountUpdateResponse{
+		Body: responseBody,
+	}, nil
+}
+
+func (w *APIWrapper) GetOwnAccount(ctx context.Context, input *dto.AccountDetailRequest) (*dto.AccountDetailResponse, error) {
+	userID, ok := GetUserID(ctx)
+	if !ok {
+		return nil, huma.Error401Unauthorized("Please sign in to complete this operation")
+	}
+
+	accountInfo, err := w.accountRepo.GetAccountByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrAccountDoesNotExist) {
+			return nil, huma.Error400BadRequest("Cannot perform this operation")
+		}
+
+		correlationID := GetCorrelationID(ctx)
+		w.logger.Error("Error retrieving profile", "account_id", userID, "correlation_id", correlationID)
+		return nil, huma.Error500InternalServerError("Could not retrieve account")
+	}
+
+	responseBody := dto.AccountDetailResponseBody{
+		Account: dto.Account{
+			FirstName: accountInfo.FirstName,
+			LastName:  accountInfo.LastName,
+			CreatedAt: accountInfo.CreatedAt.Time,
+		},
+		BaseResponse: dto.BaseResponse{
+			Message:       "ok",
+			StatusMessage: dto.Success,
+		},
+	}
+
+	if accountInfo.Bio.Valid {
+		responseBody.Account.Bio = accountInfo.Bio.String
+	}
+
+	if accountInfo.OtherNames.Valid {
+		responseBody.Account.OtherNames = accountInfo.OtherNames.String
+	}
+
+	if accountInfo.Phone.Valid {
+		responseBody.Account.Phone = accountInfo.Phone.String
+	}
+
+	return &dto.AccountDetailResponse{
+		Body: responseBody,
+	}, nil
+}
