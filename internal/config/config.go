@@ -2,11 +2,12 @@ package config
 
 import (
 	"fmt"
-	"go-boilerplate/internal/lib"
 	"os"
 	"strconv"
 	"sync"
 	"time"
+
+	"go-boilerplate/internal/lib"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
@@ -100,7 +101,7 @@ type OAuthConfig struct {
 type JobConfig struct {
 	Concurrency      int         `env:"JOB_CONCURRENCY" envDefault:"10"`
 	Queues           []string    `env:"JOB_QUEUES" envSeparator:"," envDefault:"critical:6,default:3,low:1"`
-	ConnectionConfig RedisConfig `envPrefix:"JOB_REDIS_"`
+	ConnectionConfig RedisConfig `envPrefix:"JOB_"`
 }
 
 type Settings struct {

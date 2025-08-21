@@ -1,0 +1,137 @@
+services:
+  postgres-db:
+    image: postgis/postgis:17-3.5-alpine # Using a specific version of PostgreSQL on Alpine
+    container_name: postgres-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DATABASE_USERNAME:-admin}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD:-password}
+      - POSTGRES_DB=${DATABASE_NAME:-app_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend_net
+    # ports: # Exposing PostgreSQL port for potential external access during development
+    #   - "${DATABASE_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-admin} -d ${DATABASE_NAME:-app_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: valkey/valkey:8-alpine # Using an official Valkey image on Alpine
+    container_name: valkey
+    restart: unless-stopped
+    command: [ "valkey-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru", "--appendfsync", "everysec" ]
+    volumes:
+      - valkey-data:/data
+    networks:
+      - backend_net
+    healthcheck:
+      # Valkey-cli is not always packaged directly, redis-cli can often ping Valkey for healthcheck
+      # For a more robust Valkey specific check, one might need a custom healthcheck script or image
+      # Using a basic TCP check or a compatible ping if valkey-cli becomes standard in image
+      test: ["CMD", "valkey-cli", "-h", "localhost", "-p", "6379", "ping"] # Assuming valkey listens on 6379 and responds to PING
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+      args:
+        - SERVER_PORT=${SERVER_PORT:-8080}
+    container_name: api
+    restart: unless-stopped
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      valkey: # Changed from redis to valkey
+        condition: service_healthy
+      dbmate:
+        condition: service_completed_successfully
+    environment:
+      - APP_NAME=${APP_NAME:-Boilerplate}
+      - BASE_URL=${BASE_URL:-http://localhost:8080}
+      - CACHE_REDIS_DB=${CACHE_REDIS_DB:-0}
+      - CACHE_REDIS_HOST=${CACHE_REDIS_HOST:-valkey}
+      - CACHE_REDIS_PASSWORD=${CACHE_REDIS_PASSWORD:-}
+      - CACHE_REDIS_PORT=${CACHE_REDIS_PORT:-6379}
+      - CACHE_REDIS_USE_SSL=${CACHE_REDIS_USE_SSL:-false}
+      - CACHE_REDIS_USER=${CACHE_REDIS_USER:-}
+      - DATABASE_URL=${DATABASE_URL:?err}
+      - DB_CONN_MAX_IDLE_TIME=${DB_CONN_MAX_IDLE_TIME:-5m}
+      - DB_CONN_MAX_LIFETIME=${DB_CONN_MAX_LIFETIME:-1h}
+      - DB_DRIVER=${DB_DRIVER:-postgres}
+      - DB_MAX_IDLE_CONNS=${DB_MAX_IDLE_CONNS:-5}
+      - DB_MAX_OPEN_CONNS=${DB_MAX_OPEN_CONNS:-25}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - DB_TIMEZONE=${DB_TIMEZONE:-Africa/Lagos}
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL:?err}
+      - JOB_CONCURRENCY=${JOB_CONCURRENCY:-10}
+      - JOB_QUEUES=${QUEUES:-critical:6,default:3,low:1}
+      - JOB_REDIS_DB=${JOB_REDIS_DB:-0}
+      - JOB_REDIS_HOST=${JOB_REDIS_HOST:-valkey}
+      - JOB_REDIS_PASSWORD=${JOB_REDIS_PASSWORD:-}
+      - JOB_REDIS_PORT=${JOB_REDIS_PORT:-6379}
+      - JOB_REDIS_USE_SSL=${JOB_REDIS_USE_SSL:-false}
+      - JOB_REDIS_USER=${JOB_REDIS_USER:-}
+      - JWT_AUDIENCE=${JWT_AUDIENCE:-boilerplate-app}
+      - JWT_ISSUER=${JWT_ISSUER:-boilerplate-auth}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_STYLE=${LOG_STYLE:-json}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_PORT=${MAIL_PORT:?err}
+      - MAIL_SENDER=${MAIL_SENDER:?err}
+      - MAIL_SERVER=${MAIL_SERVER:?err}
+      - MAIL_TIMEOUT=${MAIL_TIMEOUT:-5s}
+      - MAIL_USE_SSL=${MAIL_USE_SSL:-false}
+      - MAIL_USE_TLS=${MAIL_USE_TLS:-false}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_HOST=${REDIS_HOST:-valkey}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_USE_SSL=${REDIS_USE_SSL:-false}
+      - REDIS_USER=${REDIS_USER:-}
+      - SECRET_KEY=${SECRET_KEY:?err}
+      - SERVER_ALLOWED_HEADERS=${SERVER_ALLOWED_HEADERS}
+      - SERVER_ALLOWED_ORIGINS=${SERVER_ALLOWED_ORIGINS}
+      - SERVER_HOST=${SERVER_HOST:-0.0.0.0}
+      - SERVER_PORT=${SERVER_PORT:-8080}
+      - TOKEN_LIFETIME=${TOKEN_LIFETIME:-24h}
+      - VERIFICATION_TOKEN_TTL=${VERIFICATION_TOKEN_TTL:-30m}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    networks:
+      - backend_net
+
+  dbmate:
+    image: amacneil/dbmate:2.28
+    container_name: dbmate
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    volumes:
+      - ./internal/db/migrations:/db/migrations # Mount the db-scripts directory
+    environment:
+      - DATABASE_URL=postgres://${DATABASE_USERNAME:-admin}:${DATABASE_PASSWORD:-password}@postgres-db:${DATABASE_PORT:-5432}/${DATABASE_NAME:-app_db}?sslmode=disable
+    networks:
+      - backend_net
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["sleep 5 && /usr/local/bin/dbmate up"]
+
+volumes:
+  postgres-data:
+  valkey-data:
+
+networks:
+  backend_net:
+    driver: bridge

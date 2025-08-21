@@ -52,11 +52,11 @@ func (tsl *JobServiceLogger) Fatal(args ...interface{}) {
 }
 
 type JobService struct {
-	Client      *asynq.Client
-	server      *asynq.Server
-	logger      *slog.Logger
-	handlerCtx  *JobHandlerContext
-	handlers    map[string]ContextualJobHandler
+	Client     *asynq.Client
+	server     *asynq.Server
+	logger     *slog.Logger
+	handlerCtx *JobHandlerContext
+	handlers   map[string]ContextualJobHandler
 }
 
 // NewJobService creates a new JobService.
@@ -82,11 +82,11 @@ func NewJobService(logger *slog.Logger, cfg *config.JobConfig, redisClient *redi
 	)
 
 	return &JobService{
-		Client:      client,
-		server:      server,
-		logger:      serviceLogger,
-		handlerCtx:  handlerCtx,
-		handlers:    make(map[string]ContextualJobHandler),
+		Client:     client,
+		server:     server,
+		logger:     serviceLogger,
+		handlerCtx: handlerCtx,
+		handlers:   make(map[string]ContextualJobHandler),
 	}, nil
 }
 

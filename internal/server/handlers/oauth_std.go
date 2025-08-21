@@ -109,8 +109,8 @@ func GoogleCallbackHandler(cfg *config.Settings) http.HandlerFunc {
 
 		var googleUser struct {
 			Names          []struct{ GivenName, FamilyName string } `json:"names"`
-			EmailAddresses []struct{ Value string }               `json:"emailAddresses"`
-			PhoneNumbers   []struct{ Value string }               `json:"phoneNumbers"`
+			EmailAddresses []struct{ Value string }                 `json:"emailAddresses"`
+			PhoneNumbers   []struct{ Value string }                 `json:"phoneNumbers"`
 		}
 		if err := json.Unmarshal(contents, &googleUser); err != nil {
 			http.Error(w, fmt.Sprintf("failed to unmarshal user info: %s", err.Error()), http.StatusInternalServerError)

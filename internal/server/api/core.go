@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"go-boilerplate/internal/cache"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/db"
@@ -110,6 +111,27 @@ func (w *APIWrapper) registerAPIRoutes(api huma.API) {
 		Summary:     "Sign in",
 		Tags:        []string{"Accounts"},
 	}, w.SignIn)
+	huma.Register(api, huma.Operation{
+		Method:      http.MethodGet,
+		Path:        "/healthz",
+		Summary:     "Health check",
+		Description: "Performs a health check of the API.",
+		Tags:        []string{"Health"},
+	}, w.HealthCheck)
+}
+
+func (w *APIWrapper) HealthCheck(ctx context.Context, input *struct{}) (*struct {
+	Body struct {
+		Status string `json:"status"`
+	}
+}, error) {
+	response := &struct {
+		Body struct {
+			Status string `json:"status"`
+		}
+	}{}
+	response.Body.Status = "ok"
+	return response, nil
 }
 
 func SetupAPI(mux *http.ServeMux, cfg config.Settings, dbService *db.DBService, cacheService *cache.CacheService, jobService *job.JobService, redisService *redisutil.RedisService, rootLogger *slog.Logger) *APIWrapper {
