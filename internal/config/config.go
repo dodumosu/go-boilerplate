@@ -33,7 +33,7 @@ type AuthConfig struct {
 }
 
 type CacheConfig struct {
-	ConnectionConfig RedisConfig `envPrefix:"CACHE_REDIS_"`
+	ConnectionConfig RedisConfig `envPrefix:"CACHE_"`
 }
 
 type DatabaseConfig struct {
